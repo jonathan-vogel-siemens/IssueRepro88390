@@ -25,8 +25,8 @@ namespace IssueRepro88390
 
         public void Configure(ApplicationInsightsServiceOptions options)
         {
-            KeyVaultSecret secret = SecretClient.GetSecret($"appinsights-connectionstring");
-            options.ConnectionString = secret.Value;
+            // KeyVaultSecret secret = SecretClient.GetSecret($"appinsights-connectionstring");
+            // options.ConnectionString = secret.Value;
         }
 
         public void Configure(string name, ApplicationInsightsServiceOptions options) => Configure(options);

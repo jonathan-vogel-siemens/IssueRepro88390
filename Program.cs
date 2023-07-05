@@ -2,12 +2,16 @@ using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Azure;
+using Microsoft.Identity.Web;
 
 namespace IssueRepro88390
 {
     public class Program
     {
+        const bool WANTS_DEADLOCK = true;
+
         /// <summary>
         /// Minimal example reproducing https://github.com/dotnet/runtime/issues/88390
         /// </summary>
@@ -20,13 +24,27 @@ namespace IssueRepro88390
 
             TokenCredential azureCredential = new DefaultAzureCredential();
 
-            // Add Azure Clients using Microsoft.Extensions.Azure
-            builder.Services.AddAzureClients(builder =>
-            {
-                builder.UseCredential(azureCredential);
+            var keyVaultUri = new Uri("https://example.vault.azure.net/");
 
-                builder.AddSecretClient(new Uri("https://examplekeyvault.vault.azure.net/"));
-            });
+            if (WANTS_DEADLOCK)
+            {
+                // Add Azure Clients using Microsoft.Extensions.Azure
+                builder.Services.AddAzureClients(builder =>
+                {
+                    builder.UseCredential(azureCredential);
+
+                    builder.AddSecretClient(keyVaultUri);
+                });
+            }
+            else
+            {
+                builder.Services.AddSingleton<SecretClient>(isp => new SecretClient(keyVaultUri, azureCredential));
+            }
+
+            builder.Services.ConfigureOptions<ConfigureMicrosoftIdentityOptions>();
+
+            builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+                .AddMicrosoftIdentityWebApp(options => { });
 
             // This causes the Deadlock
             builder.Services.ConfigureOptions<ConfigureApplicationInsightsServiceOptions>();
