@@ -20,41 +20,7 @@ namespace IssueRepro88390
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddRazorPages();
-
-            TokenCredential azureCredential = new DefaultAzureCredential();
-
-            var keyVaultUri = new Uri("https://example.vault.azure.net/");
-
-            if (WANTS_DEADLOCK)
-            {
-                // Add Azure Clients using Microsoft.Extensions.Azure
-                builder.Services.AddAzureClients(builder =>
-                {
-                    builder.UseCredential(azureCredential);
-
-                    builder.AddSecretClient(keyVaultUri);
-                });
-            }
-            else
-            {
-                builder.Services.AddSingleton<SecretClient>(isp => new SecretClient(keyVaultUri, azureCredential));
-            }
-
-            builder.Services.ConfigureOptions<ConfigureMicrosoftIdentityOptions>();
-
-            builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-                .AddMicrosoftIdentityWebApp(options => { });
-
-            // This causes the Deadlock
-            builder.Services.ConfigureOptions<ConfigureApplicationInsightsServiceOptions>();
-
-            builder.Services.Configure<TelemetryConfiguration>(config =>
-            {
-                config.SetAzureTokenCredential(azureCredential);
-            });
-
-            builder.Services.AddApplicationInsightsTelemetry();
+            ConfigureServices(builder.Services);
 
             var app = builder.Build();
 
@@ -77,6 +43,45 @@ namespace IssueRepro88390
             app.MapRazorPages();
 
             app.Run();
+        }
+
+        private static void ConfigureServices(IServiceCollection services)
+        {
+            services.AddRazorPages();
+
+            TokenCredential azureCredential = new DefaultAzureCredential();
+
+            var keyVaultUri = new Uri("https://example.vault.azure.net/");
+
+            if (WANTS_DEADLOCK)
+            {
+                // Add Azure Clients using Microsoft.Extensions.Azure
+                services.AddAzureClients(builder =>
+                {
+                    builder.UseCredential(azureCredential);
+
+                    builder.AddSecretClient(keyVaultUri);
+                });
+            }
+            else
+            {
+                services.AddSingleton<SecretClient>(isp => new SecretClient(keyVaultUri, azureCredential));
+            }
+
+            services.ConfigureOptions<ConfigureMicrosoftIdentityOptions>();
+
+            services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+                .AddMicrosoftIdentityWebApp(options => { });
+
+            // This causes the Deadlock
+            services.ConfigureOptions<ConfigureApplicationInsightsServiceOptions>();
+
+            services.Configure<TelemetryConfiguration>(config =>
+            {
+                config.SetAzureTokenCredential(azureCredential);
+            });
+
+            services.AddApplicationInsightsTelemetry();
         }
     }
 }
